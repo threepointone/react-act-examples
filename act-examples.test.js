@@ -16,11 +16,11 @@ describe("act and jest, sitting in a tree", () => {
     }
 
     const el = document.createElement("div");
-    
+
     act(() => {
       ReactDOM.render(<App />, el);
     });
-    
+
     expect(el.innerHTML).toBe("1");
   });
 
@@ -32,11 +32,11 @@ describe("act and jest, sitting in a tree", () => {
 
     const el = document.createElement("div");
     // we attach the element to body to ensure events work
-    document.body.appendChild(el); 
+    document.body.appendChild(el);
     ReactDOM.render(<App />, el);
-    
+
     const button = el.childNodes[0];
-    
+
     act(() => {
       for (let i = 0; i < 3; i++) {
         button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -66,15 +66,15 @@ describe("act and jest, sitting in a tree", () => {
 
       const el = document.createElement("div");
       act(() => {
-        ReactDOM.render(<App />, el);  
-      })      
-      
+        ReactDOM.render(<App />, el);
+      });
+
       expect(el.innerHTML).toBe("0");
-      
+
       act(() => {
         jest.runAllTimers();
       });
-      
+
       expect(el.innerHTML).toBe("1");
     });
 
@@ -99,12 +99,12 @@ describe("act and jest, sitting in a tree", () => {
       const el = document.createElement("div");
       act(() => {
         ReactDOM.render(<App />, el);
-      })
-      
+      });
+
       expect(el.innerHTML).toBe("");
       act(() => {
-        resolve(42);  
-      })      
+        resolve(42);
+      });
       expect(el.innerHTML).toBe("42");
     });
 
@@ -117,7 +117,7 @@ describe("act and jest, sitting in a tree", () => {
           resolve = _resolve;
         });
       }
-      
+
       function App() {
         let [data, setData] = useState(null);
         async function somethingAsync() {
@@ -129,19 +129,19 @@ describe("act and jest, sitting in a tree", () => {
         }, []);
         return data;
       }
-      
+
       const el = document.createElement("div");
       act(() => {
         ReactDOM.render(<App />, el);
       });
-      
+
       expect(el.innerHTML).toBe("");
-      
+
       act(() => {
         resolve(42);
         jest.runAllTimers();
       });
-      
+
       expect(el.innerHTML).toBe("42");
     });
   });
