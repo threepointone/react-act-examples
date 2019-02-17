@@ -49,7 +49,7 @@ In the component above, there are a few pieces of 'work' that are apparent to us
 - the bit where it runs the effect and sets state to `1`
 - the bit where it rerenders and outputs `1`
 
-<img width="638" alt="a timeline of how react would schedule thins work in a single browser frame. our test runs in the middle of this work, so misses later updates to the dom" src="https://user-images.githubusercontent.com/18808/52913619-9e6f2980-32b7-11e9-9d60-314cba4abdb2.png">
+<img width="609" alt="a timeline of how react would schedule this work in a single browser frame. our test runs in the middle of this work, so misses later updates to the dom" src="https://user-images.githubusercontent.com/18808/52914771-3ecb4b00-32c4-11e9-9923-c577f371a4aa.png">
 
 We can now see the problem. We run our test at a point in time when react hasn't even finished updating the UI. You _could_ hack around this:
 
@@ -77,8 +77,7 @@ it("should render 1", () => {
 
 Neat, the test now passes! In short, "act" is a way of putting 'boundaries' around those bits of your code that actually 'interact' with your React app - these could be user interactions, apis, custom event handlers and subscriptions firing; anything that looks like it 'changes' something in your ui. React will make sure your UI is updated as 'expected', so you can make assertions on it.
 
-<img width="558" alt="a timeline like before, except this time all the work is bunched into one group, and we show how the test assertions happen after it" src="https://user-images.githubusercontent.com/18808/52913620-9f07c000-32b7-11e9-9553-12d6d03c3441.png">
-
+<img width="559" alt="a timeline like before, except this time all the work is bunched into one group, and we show how the test assertions happen after it" src="https://user-images.githubusercontent.com/18808/52914772-3ecb4b00-32c4-11e9-99c4-4915af46c149.png">
 
 (You can even nest multiple calls to `act`, composing interactions across functions, but in most cases you wouldn't need more than 1-2 levels of nesting.)
 
