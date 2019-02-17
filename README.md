@@ -49,7 +49,7 @@ In the component above, there are a few pieces of 'work' that are apparent to us
 - the bit where it runs the effect and sets state to `1`
 - the bit where it rerenders and outputs `1`
 
-[ timeline - with an arrow at where our test would be ]
+<img width="638" alt="screenshot 2019-02-17 at 13 26 03" src="https://user-images.githubusercontent.com/18808/52913619-9e6f2980-32b7-11e9-9d60-314cba4abdb2.png">
 
 We can now see the problem. We run our test at a point in time when react hasn't even finished updating the UI. You _could_ hack around this:
 
@@ -77,7 +77,8 @@ it("should render 1", () => {
 
 Neat, the test now passes! In short, "act" is a way of putting 'boundaries' around those bits of your code that actually 'interact' with your React app - these could be user interactions, apis, custom event handlers and subscriptions firing; anything that looks like it 'changes' something in your ui. React will make sure your UI is updated as 'expected', so you can make assertions on it.
 
-[timeline - this time with act]
+<img width="558" alt="screenshot 2019-02-17 at 13 26 12" src="https://user-images.githubusercontent.com/18808/52913620-9f07c000-32b7-11e9-9553-12d6d03c3441.png">
+
 
 (You can even nest multiple calls to `act`, composing interactions across functions, but in most cases you wouldn't need more than 1-2 levels of nesting.)
 
