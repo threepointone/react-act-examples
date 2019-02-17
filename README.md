@@ -319,9 +319,7 @@ await act(async () => {
 This simplifies a lot of rough edges with testing asynchronous logic in components. You don't have to mess with fake timers or builds anymore, and can write tests more 'naturally'. As a bonus, it'll be compatible with concurrent mode! Let's rewrite that last test with this new api.
 
 ```jsx
-// we use jest's async support
 it("can handle async/await", async () => {
-  jest.useFakeTimers();
   // ...
   expect(el.innerHTML).toBe("");
   await act(async () => {
