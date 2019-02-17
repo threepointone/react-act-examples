@@ -22,8 +22,6 @@ ReactDOM.render(<App />, document.getElementById("app"));
 
 You run it, and you see `1` on your screen. This makes sense to you - the effect ran immediately, updated the state, and that rendered to your screen.
 
-[screenshot]
-
 So you write a test for this behaviour, in everyone's favourite testing framework, [jest](https://jestjs.io/):
 
 ```jsx
@@ -76,7 +74,7 @@ it("should render 1", () => {
 
 Neat, the test now passes! In short, "act" is a way of putting 'boundaries' around those bits of your code that actually 'interact' with your react app - these could be user events interactions, apis, custom event handlers firing - anything that looks like it 'changes' something in your ui.
 
-[screenshot]
+[timeline - this time with act]
 
 (You can even nest multiple calls to `act`, composing interactions across functions, but in most cases you wouldn't need more than 1-2 levels of nesting.)
 
