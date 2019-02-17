@@ -1,6 +1,9 @@
+(I'm still editing and making changes to this document, but feel free to read; I hope it's useful to you!)
+
+
 ## secrets of the `act(...)` api
 
-tl;dr: wrap your test interactions with `act(() => ...)`. Maybe a custom babel config. React will take care of the rest.
+tl;dr: wrap your test interactions with `act(() => ...)`. React will take care of the rest.
 
 ### effects
 
