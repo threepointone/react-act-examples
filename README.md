@@ -36,12 +36,12 @@ it("should render 1", () => {
 
 You run your tests, and oops 😣
 
-![image](https://user-images.githubusercontent.com/18808/52912654-441c9b80-32ac-11e9-9112-50b9329feebb.png)
+![screenshot of the test failing](https://user-images.githubusercontent.com/18808/52912654-441c9b80-32ac-11e9-9112-50b9329feebb.png)
 
 
-That doesn't seem right. You check the value of `el.innerHTML` and it says `0`. But how can that be? Does jest do something strange? Or are you just hallucinating? The docs for useEffect make this a bit clearer - "By using this Hook, you tell React that your component needs to do something **after render**". How did you never see `0` in the browser, if even for a single moment?
+That doesn't seem right. The value of `el.innerHTML` claims to `0`. But how can that be? Does jest do something strange? Or are you just hallucinating? The docs for useEffect make this a bit clearer - "By using this Hook, you tell React that your component needs to do something **after render**". How did you never see `0` in the browser, if even for a single moment?
 
-To understand this, let's talk a bit about how React works. Since the big fiber rewrite of yore, React doesn't just 'synchronously' render the whole UI everytime you poke at it. It divides its work into chunks (called, er, 'work' 🙄), and queues it up in a scheduler. It could then choose to execute this at one go, or slowly if the cpu is throttled by serious work (like handling gobs of css in js), or even _not at all_ if it detects that the user can't even see it (it might be offscreen, or hidden, or made of bitcoin). _React only guarantees to be consistent to the user_, and doesn't match the expectations of interactions written in code.
+To understand this, let's talk a bit about how React works. Since the big fiber rewrite of yore, React doesn't just 'synchronously' render the whole UI everytime you poke at it. It divides its work into chunks (called, er, 'work' 🙄), and queues it up in a scheduler. It could then choose to execute this at one go, or slowly if the cpu is throttled by serious work, or even _not at all_ if it detects that the user can't even see it (it might be offscreen, or hidden, or made of bitcoin). _React only guarantees to be consistent to the user_, and doesn't match the expectations of interactions written in code.
 
 In the component above, there are a few pieces of 'work' that are apparent to us:
 
@@ -49,7 +49,7 @@ In the component above, there are a few pieces of 'work' that are apparent to us
 - the bit where it runs the effect and sets state to `1`
 - the bit where it rerenders and outputs `1`
 
-<img width="638" alt="screenshot 2019-02-17 at 13 26 03" src="https://user-images.githubusercontent.com/18808/52913619-9e6f2980-32b7-11e9-9d60-314cba4abdb2.png">
+<img width="638" alt="a timeline of how react would schedule thins work in a single browser frame. our test runs in the middle of this work, so misses later updates to the dom" src="https://user-images.githubusercontent.com/18808/52913619-9e6f2980-32b7-11e9-9d60-314cba4abdb2.png">
 
 We can now see the problem. We run our test at a point in time when react hasn't even finished updating the UI. You _could_ hack around this:
 
@@ -77,7 +77,7 @@ it("should render 1", () => {
 
 Neat, the test now passes! In short, "act" is a way of putting 'boundaries' around those bits of your code that actually 'interact' with your React app - these could be user interactions, apis, custom event handlers and subscriptions firing; anything that looks like it 'changes' something in your ui. React will make sure your UI is updated as 'expected', so you can make assertions on it.
 
-<img width="558" alt="screenshot 2019-02-17 at 13 26 12" src="https://user-images.githubusercontent.com/18808/52913620-9f07c000-32b7-11e9-9553-12d6d03c3441.png">
+<img width="558" alt="a timeline like before, except this time all the work is bunched into one group, and we show how the test assertions happen after it" src="https://user-images.githubusercontent.com/18808/52913620-9f07c000-32b7-11e9-9553-12d6d03c3441.png">
 
 
 (You can even nest multiple calls to `act`, composing interactions across functions, but in most cases you wouldn't need more than 1-2 levels of nesting.)
@@ -95,7 +95,7 @@ function App() {
 
 Pretty simple, I think: A button that increments a counter. You render this to a browser like before.
 
-![ticker](https://user-images.githubusercontent.com/18808/52912742-64992580-32ad-11e9-8e1b-70e24d6329ee.gif)
+![a gif of a button being clicked, whose contents go from 0 to 10](https://user-images.githubusercontent.com/18808/52912742-64992580-32ad-11e9-8e1b-70e24d6329ee.gif)
 
 So far, so good. Let's write a test for it.
 
@@ -171,9 +171,9 @@ it("should tick to a new value", () => {
 });
 ```
 
-![image](https://user-images.githubusercontent.com/18808/52912877-885d6b00-32af-11e9-9a0b-0ba4f9adc756.png)
+![a screnshot of jest's output - showing that the test passed, but a warning appeared as well](https://user-images.githubusercontent.com/18808/52912877-885d6b00-32af-11e9-9a0b-0ba4f9adc756.png)
 
-Better! We were able to convert asynchronous time space to be synchronous and manageable. We also get the warning; when we ran `runAllTimers()`, the timeout in the component resolved, triggering the setState. Like the warning advises, we mark the boundaries of that action with `act`. Attempt 3 -
+Better! We were able to convert asynchronous time to be synchronous and manageable. We also get the warning; when we ran `runAllTimers()`, the timeout in the component resolved, triggering the setState. Like the warning advises, we mark the boundaries of that action with `act(...)`. Attempt 3:
 
 ```jsx
 it("should tick to a new value", () => {
@@ -252,7 +252,8 @@ Now, let's do hard mode with `async/await`. This presents a challenge because wh
 function App() {
   let [data, setData] = useState(null);
   async function somethingAsync() {
-    let response = await fetch("/some/url");
+    // this time we use the await syntax
+    let response = await fetch("/some/url"); 
     setData(response);
   }
   useEffect(() => {
@@ -267,15 +268,12 @@ And run the same test on it -
 ```jsx
 it("should display fetched data", () => {
   let resolve;
-  // a rather simple mock, you might use something more advanced for your needs
+  // another simple mock, you might use something more advanced for your needs
   global.fetch = function fetch() {
-    return {
-      then(fn) {
-        resolve = fn;
-      }
-    };
-  };
-
+    return new Promise(_resolve => {
+      resolve = _resolve;
+    });
+  }
   const el = document.createElement("div");
   act(() => {
     ReactDOM.render(<App />, el);
@@ -313,11 +311,18 @@ expect(el.innerHTML).toBe("42");
 
 The tests pass! This is pretty powerful, and scales well. It's a pretty close approximation of the setup used at facebook.com, if that helps. With this setup, you should be well on your way to writing accurate tests that model user and browser behaviour more closely. For more detail, in this same repo, you'll find the above tests in [act-examples.test.js](https://github.com/threepointone/react-act-examples/blob/master/act-examples.test.js), as well as the custom babel config I used in [.babelrc](https://github.com/threepointone/react-act-examples/blob/master/.babelrc) (I would have put these up on codesandbox, but they don't yet support jest's timer mocks.)
 
+Notes:
+
+- if you're using `ReactTestRenderer`, you should use `ReactTestRenderer.act` instead.
+- we can reduce some of the boilerplate associated with this by integrating `act` directly with testing libraries; [react-testing-library](https://github.com/kentcdodds/react-testing-library/) already wraps its helper functions by default with act, and I hope that enzyme, and others like it, will do the same.
+
+
 ---
+
+# (Disclaimer - the rest of this is work in progress, it may or may not change)
 
 Now, some of this isn't ideal. We can't expect everyone to use timer mocks and/or a custom build setup just to test their code. So what can we do better?
 
-# (Disclaimer - the rest of this is [work in progress](https://github.com/facebook/react/pull/14853))
 
 What if `act(...)` had an asynchronous version? Let's say we could write tests like this:
 
@@ -345,9 +350,4 @@ it("can handle async/await", async () => {
 Much nicer. While it's less restrictive than the synchronous version, it supports all its features, but in an async form. The api makes some effort to make sure you don't interleave these calls, maintaining a tree-like shape of interactions at all times.
 
 
----
 
-Notes:
-
-- if you're using `ReactTestRenderer`, you should use `ReactTestRenderer.act` instead.
-- we can reduce some of the boilerplate associated with this by integrating `act` directly with testing libraries; [react-testing-library](https://github.com/kentcdodds/react-testing-library/) already wraps its helper functions by default with act, and I hope that enzyme, and others like it, will do the same.
