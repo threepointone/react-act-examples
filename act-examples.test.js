@@ -46,103 +46,118 @@ describe("act and jest, sitting in a tree", () => {
     expect(button.innerHTML).toBe("3");
   });
 
-  describe("fake timers", () => {
-    beforeEach(() => {
-      jest.useFakeTimers();
+  it("can handle fake timers", () => {
+    jest.useFakeTimers();
+    function App() {
+      const [ctr, setCtr] = useState(0);
+      useEffect(() => {
+        setTimeout(() => setCtr(1), 1000);
+      }, []);
+      return ctr;
+    }
+
+    const el = document.createElement("div");
+    act(() => {
+      ReactDOM.render(<App />, el);
     });
 
-    afterEach(() => {
-      jest.useRealTimers();
+    expect(el.innerHTML).toBe("0");
+
+    act(() => {
+      jest.runAllTimers();
     });
 
-    it("can handle timers", () => {
-      function App() {
-        const [ctr, setCtr] = useState(0);
-        useEffect(() => {
-          setTimeout(() => setCtr(1), 1000);
-        }, []);
-        return ctr;
-      }
+    expect(el.innerHTML).toBe("1");
+    jest.useRealTimers();
+  });
 
-      const el = document.createElement("div");
-      act(() => {
-        ReactDOM.render(<App />, el);
+  it("can handle real timers", async () => {
+    function sleep(period) {
+      return new Promise((resolve, reject) => {
+        setTimeout(resolve, period);
       });
+    }
+    function App() {
+      const [ctr, setCtr] = useState(0);
+      useEffect(() => {
+        setTimeout(() => setCtr(1), 1000);
+      }, []);
+      return ctr;
+    }
 
-      expect(el.innerHTML).toBe("0");
-
-      act(() => {
-        jest.runAllTimers();
-      });
-
-      expect(el.innerHTML).toBe("1");
+    const el = document.createElement("div");
+    act(() => {
+      ReactDOM.render(<App />, el);
     });
 
-    it("can handle promises", () => {
-      let resolve;
-      function fetch() {
-        return {
-          then(fn) {
-            resolve = fn;
-          }
-        };
-      }
+    expect(el.innerHTML).toBe("0");
 
-      function App() {
-        let [data, setData] = useState(null);
-        useEffect(() => {
-          fetch("/some/url").then(setData);
-        }, []);
-        return data;
-      }
-
-      const el = document.createElement("div");
-      act(() => {
-        ReactDOM.render(<App />, el);
-      });
-
-      expect(el.innerHTML).toBe("");
-      act(() => {
-        resolve(42);
-      });
-      expect(el.innerHTML).toBe("42");
+    await act(async () => {
+      await sleep(1200);
     });
 
-    it("can handle async/await", () => {
-      // this is the only test that requires the fancy babel setup
-      global.Promise = require("promise");
-      let resolve;
-      function fetch() {
-        return new Promise(_resolve => {
-          resolve = _resolve;
-        });
-      }
+    expect(el.innerHTML).toBe("1");
+  });
 
-      function App() {
-        let [data, setData] = useState(null);
-        async function somethingAsync() {
-          let response = await fetch("/some/url");
-          setData(response);
-        }
-        useEffect(() => {
-          somethingAsync();
-        }, []);
-        return data;
-      }
-
-      const el = document.createElement("div");
-      act(() => {
-        ReactDOM.render(<App />, el);
+  it("can handle promises", async () => {
+    let resolve;
+    function fetch() {
+      return new Promise(_resolve => {
+        resolve = _resolve;
       });
+    }
 
-      expect(el.innerHTML).toBe("");
+    function App() {
+      let [data, setData] = useState(null);
+      useEffect(() => {
+        fetch("/some/url").then(setData);
+      }, []);
+      return data;
+    }
 
-      act(() => {
-        resolve(42);
-        jest.runAllTimers();
-      });
-
-      expect(el.innerHTML).toBe("42");
+    const el = document.createElement("div");
+    await act(async () => {
+      ReactDOM.render(<App />, el);
     });
+
+    expect(el.innerHTML).toBe("");
+    await act(async () => {
+      resolve(42);
+    });
+    expect(el.innerHTML).toBe("42");
+  });
+
+  it("can handle async/await", async () => {
+    let resolve;
+    function fetch() {
+      return new Promise(_resolve => {
+        resolve = _resolve;
+      });
+    }
+
+    function App() {
+      let [data, setData] = useState(null);
+      async function somethingAsync() {
+        let response = await fetch("/some/url");
+        setData(response);
+      }
+      useEffect(() => {
+        somethingAsync();
+      }, []);
+      return data;
+    }
+
+    const el = document.createElement("div");
+    act(() => {
+      ReactDOM.render(<App />, el);
+    });
+
+    expect(el.innerHTML).toBe("");
+
+    await act(async () => {
+      resolve(42);
+    });
+
+    expect(el.innerHTML).toBe("42");
   });
 });

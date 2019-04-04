@@ -1,20 +1,8 @@
 {
   "presets": [
-    // we import this so we can use jsx in our tests, 
-    // it is not essential for the async/await workaround
     "@babel/preset-react"
   ],
   "plugins": [
-    // this plugin converts async/await syntax into 
-    // regular function calls to a library called 'regenerator'
-    "@babel/plugin-transform-regenerator", 
-
-    // this plugin automatically imports the regenerator runtime when needed 
-    [ "@babel/plugin-transform-runtime", {regenerator: true} ],
-    
-    // this plugin converts es6 `import`/`export` syntax to `require(...)` calls 
     "@babel/plugin-transform-modules-commonjs"
   ]
 }
-
-// you should also add `@babel/runtime` to your package.json dependencies

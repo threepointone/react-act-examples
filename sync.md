@@ -1,5 +1,3 @@
-Read this first - https://github.com/facebook/react/issues/14769#issuecomment-466058461
-
 (I'm still editing and making changes to this document, but feel free to read; I hope it's useful to you!)
 
 ## secrets of the `act(...)` api
@@ -42,10 +40,9 @@ You run your tests, and oops 😣
 
 ![screenshot of the test failing](https://user-images.githubusercontent.com/18808/52912654-441c9b80-32ac-11e9-9112-50b9329feebb.png)
 
-
 That doesn't seem right. The value of `el.innerHTML` claims to `0`. But how can that be? Does jest do something strange? Or are you just hallucinating? The docs for useEffect make this a bit clearer - "By using this Hook, you tell React that your component needs to do something **after render**". How did you never see `0` in the browser, if even for a single moment?
 
-To understand this, let's talk a bit about how React works. Since the big fiber rewrite of yore, React doesn't just 'synchronously' render the whole UI everytime you poke at it. It divides its work into chunks (called, er, 'work' 🙄), and queues it up in a scheduler. It could then choose to execute this at one go, or slowly if the cpu is throttled by serious work, or even _not at all_ if it detects that the user can't even see it (it might be offscreen, or hidden, or made of bitcoin). _React only guarantees to be consistent to the user_, and doesn't match the expectations of interactions written in code.
+To understand this, let's talk a bit about how React works. Since the big fiber rewrite of yore, React doesn't just 'synchronously' render the whole UI everytime you poke at it. It divides its work into chunks (called, er, 'work' 🙄), and queues it up in a scheduler.
 
 In the component above, there are a few pieces of 'work' that are apparent to us:
 
@@ -53,7 +50,11 @@ In the component above, there are a few pieces of 'work' that are apparent to us
 - the bit where it runs the effect and sets state to `1`
 - the bit where it rerenders and outputs `1`
 
-<img width="609" alt="a timeline of how react would schedule this work in a single browser frame. our test runs in the middle of this work, so misses later updates to the dom" src="https://user-images.githubusercontent.com/18808/52914771-3ecb4b00-32c4-11e9-9923-c577f371a4aa.png">
+<img
+  width="609"
+  alt="a timeline of how react would schedule this work in a single browser frame. our test runs in the middle of this work, so misses later updates to the dom"
+  src="https://user-images.githubusercontent.com/18808/52914771-3ecb4b00-32c4-11e9-9923-c577f371a4aa.png"
+/>
 
 We can now see the problem. We run our test at a point in time when react hasn't even finished updating the UI. You _could_ hack around this:
 
@@ -81,11 +82,15 @@ it("should render 1", () => {
 
 Neat, the test now passes! In short, "act" is a way of putting 'boundaries' around those bits of your code that actually 'interact' with your React app - these could be user interactions, apis, custom event handlers and subscriptions firing; anything that looks like it 'changes' something in your ui. React will make sure your UI is updated as 'expected', so you can make assertions on it.
 
-<img width="559" alt="a timeline like before, except this time all the work is bunched into one group, and we show how the test assertions happen after it" src="https://user-images.githubusercontent.com/18808/52914772-3ecb4b00-32c4-11e9-99c4-4915af46c149.png">
+<img
+  width="559"
+  alt="a timeline like before, except this time all the work is bunched into one group, and we show how the test assertions happen after it"
+  src="https://user-images.githubusercontent.com/18808/52914772-3ecb4b00-32c4-11e9-99c4-4915af46c149.png"
+/>
 
 (You can even nest multiple calls to `act`, composing interactions across functions, but in most cases you wouldn't need more than 1-2 levels of nesting.)
 
-### events 
+### events
 
 Let's look at another example; this time, events:
 
@@ -159,7 +164,9 @@ it("should tick to a new value", () => {
 });
 ```
 
-What could we do here? Let's lean on jest's [timer mocks](https://jestjs.io/docs/en/timer-mocks). Attempt 2:
+What could we do here?
+
+Option 1 - Let's lean on jest's [timer mocks](https://jestjs.io/docs/en/timer-mocks).
 
 ```jsx
 it("should tick to a new value", () => {
@@ -176,7 +183,7 @@ it("should tick to a new value", () => {
 
 ![a screnshot of jest's output - showing that the test passed, but a warning appeared as well](https://user-images.githubusercontent.com/18808/52912877-885d6b00-32af-11e9-9a0b-0ba4f9adc756.png)
 
-Better! We were able to convert asynchronous time to be synchronous and manageable. We also get the warning; when we ran `runAllTimers()`, the timeout in the component resolved, triggering the setState. Like the warning advises, we mark the boundaries of that action with `act(...)`. Attempt 3:
+Better! We were able to convert asynchronous time to be synchronous and manageable. We also get the warning; when we ran `runAllTimers()`, the timeout in the component resolved, triggering the setState. Like the warning advises, we mark the boundaries of that action with `act(...)`. Rewriting the test -
 
 ```jsx
 it("should tick to a new value", () => {
@@ -194,6 +201,32 @@ it("should tick to a new value", () => {
 ```
 
 Test passes, no warnings, huzzah! Good stuff.
+
+Option 2 - Alternately, let's say we wanted to use 'real' timers. This is a good time to introduce the asynchronous version of act. Introduced in 16.9.0-alpha.0, it lets you define an asynchronous boundary for `act()`. Rewriting the test from above -
+
+```jsx
+it("should tick to a new value", async () => {
+  // a helper to use promises with timeouts
+  function sleep(period) {
+    return new Promise(resolve => setTimeout(resolve, period));
+  }
+  const el = document.createElement("div");
+  act(() => {
+    ReactDOM.render(<App />, el);
+  });
+  expect(el.innerHTML).toBe("0");
+  await act(async () => {
+    await sleep(1100); // wait *just* a little longer than the timeout in the component
+  });
+  expect(el.innerHTML).toBe("1");
+});
+```
+
+Again, tests pass, no warnings. excellent!
+
+This simplifies a lot of rough edges with testing asynchronous logic in components. You don't have to mess with fake timers or builds anymore, and can write tests more 'naturally'. As a bonus, it will (eventually) be compatible with concurrent mode!
+
+While it's less restrictive than the synchronous version, it supports all its features, but in an async form. The api makes some effort to make sure you don't interleave these calls, maintaining a tree-like shape of interactions at all times.
 
 ### promises
 
@@ -213,15 +246,13 @@ Let's write a test again. This time, we'll mock `fetch` so we have control over 
 
 ```jsx
 it("should display fetched data", () => {
-  let resolve;
   // a rather simple mock, you might use something more advanced for your needs
-  global.fetch = function fetch() {
-    return {
-      then(fn) {
-        resolve = fn;
-      }
-    };
-  };
+  let resolve;
+  function fetch() {
+    return new Promise(_resolve => {
+      resolve = _resolve;
+    });
+  }
 
   const el = document.createElement("div");
   act(() => {
@@ -238,25 +269,27 @@ The test passes, but we get the warning again. Like before, we wrap the bit that
 ```jsx
 // ...
 expect(el.innerHTML).toBe("");
-act(() => {
+await act(async () => {
   resolve(42);
 });
 expect(el.innerHTML).toBe("42");
 // ...
 ```
 
-This time, the test passes, and the warning's disappeared. Brilliant.
+This time, the test passes, and the warning's disappeared. Brilliant. Of note, even thought it might appear like `resolve(42)` is synchronous, we use the async version to make sure microtasks are flushed before releasing scope, preventing the warning. Neat.
 
-### async / await 
+### async / await
 
-Now, let's do hard mode with `async/await`. This presents a challenge because whenever you use `await <some promise>;`, the javascript scheduler runs whatever comes next after the next tick, and it's hard for us to get a hold of this execution block to wrap `act(...)` around. Revisiting the component from the previous example -
+Now, let's do _hard mode_ with `async/await`. :(
+
+Haha, just joking, this is now as simple as the previous examples, now that we have the asynchronous version to capture the scope. Revisiting the component from the previous example -
 
 ```jsx
 function App() {
   let [data, setData] = useState(null);
   async function somethingAsync() {
     // this time we use the await syntax
-    let response = await fetch("/some/url"); 
+    let response = await fetch("/some/url");
     setData(response);
   }
   useEffect(() => {
@@ -269,10 +302,10 @@ function App() {
 And run the same test on it -
 
 ```jsx
-it("should display fetched data", () => {
+it("should display fetched data", async () => {
+  // a rather simple mock, you might use something more advanced for your needs
   let resolve;
-  // another simple mock, you might use something more advanced for your needs
-  global.fetch = function fetch() {
+  function fetch() {
     return new Promise(_resolve => {
       resolve = _resolve;
     });
@@ -282,75 +315,18 @@ it("should display fetched data", () => {
     ReactDOM.render(<App />, el);
   });
   expect(el.innerHTML).toBe("");
-  act(() => {
+  await act(async () => {
     resolve(42);
   });
   expect(el.innerHTML).toBe("42");
 });
 ```
 
-Hmm. We notice that the test fails; `el.innerHTML` is still blank, and the setState doesn't get called (rather, it gets called after the test finishes!)
+Literally the same as the previous example. All good and green. Niccce.
 
-What can we do here?
-
-The solution for this is a bit involved:
-
-- we polyfill `Promise` globally with an implementation that can resolve promises 'immediately', such as [promise](https://www.npmjs.com/package/promise)
-- transpile your javascript with a custom babel setup like [the one in this repo](https://github.com/threepointone/react-act-examples/blob/master/.babelrc)
-- use `jest.runAllTimers()`; this will also now flush the promise task queue
-
-Rewriting the test:
-
-```jsx
-// ...
-expect(el.innerHTML).toBe("");
-act(() => {
-  resolve(42);
-  jest.runAllTimers(); // we just added this
-});
-expect(el.innerHTML).toBe("42");
-// ...
-```
-
-The tests pass! This is pretty powerful, and scales well. It's a pretty close approximation of the setup used at facebook.com, if that helps. With this setup, you should be well on your way to writing accurate tests that model user and browser behaviour more closely. For more detail, in this same repo, you'll find the above tests in [act-examples.test.js](https://github.com/threepointone/react-act-examples/blob/master/act-examples.test.js), as well as the custom babel config I used in [.babelrc](https://github.com/threepointone/react-act-examples/blob/master/.babelrc) (I would have put these up on codesandbox, but they don't yet support jest's timer mocks.)
+---
 
 Notes:
 
 - if you're using `ReactTestRenderer`, you should use `ReactTestRenderer.act` instead.
 - we can reduce some of the boilerplate associated with this by integrating `act` directly with testing libraries; [react-testing-library](https://github.com/kentcdodds/react-testing-library/) already wraps its helper functions by default with act, and I hope that enzyme, and others like it, will do the same.
-
-
----
-
-# (Disclaimer - the rest of this is work in progress, it may or may not change)
-
-Now, some of this isn't ideal. We can't expect everyone to use timer mocks and/or a custom build setup just to test their code. So what can we do better?
-
-
-What if `act(...)` had an asynchronous version? Let's say we could write tests like this:
-
-```jsx
-await act(async () => {
-  // do stuff
-});
-// make assertions
-```
-
-This simplifies a lot of rough edges with testing asynchronous logic in components. You don't have to mess with fake timers or builds anymore, and can write tests more 'naturally'. As a bonus, it'll be compatible with concurrent mode! Let's rewrite that last test with this new api.
-
-```jsx
-it("can handle async/await", async () => {
-  // ...
-  expect(el.innerHTML).toBe("");
-  await act(async () => {
-    resolve(42);
-    // or you could await a timeout, or a promise that resolves elsewhere, etc
-  });
-  expect(el.innerHTML).toBe("42");
-});
-```
-
-Much nicer. While it's less restrictive than the synchronous version, it supports all its features, but in an async form. The api makes some effort to make sure you don't interleave these calls, maintaining a tree-like shape of interactions at all times.
-
-
-
