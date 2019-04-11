@@ -3,6 +3,7 @@
 ## secrets of the `act(...)` api
 
 tl;dr: wrap your test interactions with `act(() => ...)`. React will take care of the rest.
+Note that for `async act(...)` you need React version at least [v16.9.0-alpha.0](https://github.com/facebook/react/releases/tag/v16.9.0-alpha.0).
 
 ### effects
 
