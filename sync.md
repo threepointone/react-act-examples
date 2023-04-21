@@ -277,7 +277,7 @@ expect(el.innerHTML).toBe("42");
 // ...
 ```
 
-This time, the test passes, and the warning's disappeared. Brilliant. Of note, even thought it might appear like `resolve(42)` is synchronous, we use the async version to make sure microtasks are flushed before releasing scope, preventing the warning. Neat.
+This time, the test passes, and the warning's disappeared. Brilliant. Of note, even though it might appear like `resolve(42)` is synchronous, we use the async version to make sure microtasks are flushed before releasing scope, preventing the warning. Neat.
 
 ### async / await
 
@@ -323,7 +323,7 @@ it("should display fetched data", async () => {
 });
 ```
 
-Literally the same as the previous example. All good and green. Niccce.
+Literally the same as the previous example. All good and green. Niceee.
 
 ---
 
